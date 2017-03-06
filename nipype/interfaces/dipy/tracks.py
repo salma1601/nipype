@@ -6,17 +6,15 @@ Change directory to provide relative paths for doctests
    >>> datadir = os.path.realpath(os.path.join(filepath, '../../testing/data'))
    >>> os.chdir(datadir)
 """
-from __future__ import print_function, division, unicode_literals, absolute_import
-
 import os.path as op
 import numpy as np
 import nibabel as nb
 import nibabel.trackvis as nbt
 
-from ... import logging
 from ..base import (TraitedSpec, BaseInterfaceInputSpec,
                     File, isdefined, traits)
 from .base import DipyBaseInterface
+from ... import logging
 IFLOGGER = logging.getLogger('interface')
 
 
@@ -167,7 +165,7 @@ class StreamlineTractography(DipyBaseInterface):
         from dipy.tracking.eudx import EuDX
         from dipy.data import get_sphere
         # import marshal as pickle
-        import pickle as pickle
+        import cPickle as pickle
         import gzip
 
         if (not (isdefined(self.inputs.in_model) or
@@ -260,10 +258,12 @@ class StreamlineTractography(DipyBaseInterface):
             tmask = gfa
             a_low = self.inputs.gfa_thresh
 
+        print('salma: eudx WITHOUT AFFINE')
+        print np.sum(tmask)
         eu = EuDX(tmask,
                   peaks.peak_indices[..., 0],
                   seeds=seeds,
-                  affine=affine,
+#                  affine=affine,  # removed by salma
                   odf_vertices=sphere.vertices,
                   a_low=a_low)
 
@@ -271,7 +271,22 @@ class StreamlineTractography(DipyBaseInterface):
 
         trkfilev = nb.trackvis.TrackvisFile(
             [(s, None, None) for s in ss_mm], points_space='rasmm', affine=np.eye(4))
+
         trkfilev.to_file(self._gen_filename('tracked', ext='.trk'))
+        # added by salma
+        import nibabel as nib
+        hdr_trk = nib.trackvis.empty_header()
+        img_dwi = nib.load(self.inputs.in_file)
+        hdr_trk['voxel_size'] = img_dwi.get_header().get_zooms()[:3]
+        hdr_trk['voxel_order'] = 'LAS'
+        hdr_trk['dim'] = gfa.shape[:3]
+        csd_streamlines_trk = [(s, None, None) for s in ss_mm]
+        csd_streamlines_trk = [(s, None, None) for s in list(eu)]
+        nib.trackvis.write(self._gen_filename('tracked', ext='.trk'),
+                           csd_streamlines_trk, hdr_trk, points_space='voxel')
+        print('saved by salma')
+        # added by salma
+
         return runtime
 
     def _list_outputs(self):
