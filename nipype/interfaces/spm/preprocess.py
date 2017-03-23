@@ -901,6 +901,20 @@ class NewSegmentInputSpec(SPMCommandInputSpec):
             - FWHM of Gaussian smoothness of bias
             - which maps to save (Corrected, Field) - a tuple of two boolean values""",
                                 field='channel')
+    # added by salma
+    two_channels = traits.Bool(False, usedefault=True,
+                               desc="""whether or not use second channel""")
+    second_channel_files = InputMultiPath(File(exists=True),
+                                   desc="List of files for channel 2 to be segmented",
+                                   field='channel', copyfile=False)
+    second_channel_info = traits.Tuple(traits.Float(), traits.Float(),
+                                traits.Tuple(traits.Bool, traits.Bool),
+                                desc="""A tuple with the following fields of channel 2:
+            - bias reguralisation (0-10)
+            - FWHM of Gaussian smoothness of bias
+            - which maps to save (Corrected, Field) - a tuple of two boolean values""",
+                                field='channel')
+    # added by salma
     tissues = traits.List(
         traits.Tuple(traits.Tuple(File(exists=True), traits.Int()),
                      traits.Int(), traits.Tuple(traits.Bool, traits.Bool),
@@ -1000,17 +1014,33 @@ class NewSegment(SPMCommand):
     def _format_arg(self, opt, spec, val):
         """Convert input to appropriate format for spm
         """
-
-        if opt in ['channel_files', 'channel_info']:
-            # structure have to be recreated because of some weird traits error
-            new_channel = {}
-            new_channel['vols'] = scans_for_fnames(self.inputs.channel_files)
-            if isdefined(self.inputs.channel_info):
-                info = self.inputs.channel_info
-                new_channel['biasreg'] = info[0]
-                new_channel['biasfwhm'] = info[1]
-                new_channel['write'] = [int(info[2][0]), int(info[2][1])]
-            return [new_channel]
+        if opt in ['channel_files', 'channel_info', 'second_channel', 'second_channel_info']:
+            if self.inputs.two_channels:
+                new_channel = {}
+                second_channel = {}
+                new_channel['vols'] = scans_for_fnames(self.inputs.channel_files)
+                second_channel['vols'] = scans_for_fnames(self.inputs.second_channel_files)
+                if isdefined(self.inputs.channel_info):
+                    info = self.inputs.channel_info
+                    new_channel['biasreg'] = info[0]
+                    new_channel['biasfwhm'] = info[1]
+                    new_channel['write'] = [int(info[2][0]), int(info[2][1])]
+                if isdefined(self.inputs.second_channel_info):
+                    info = self.inputs.second_channel_info
+                    second_channel['biasreg'] = info[0]
+                    second_channel['biasfwhm'] = info[1]
+                    second_channel['write'] = [int(info[2][0]), int(info[2][1])]
+                return [new_channel, second_channel]
+            else:
+                # structure have to be recreated because of some weird traits error
+                new_channel = {}
+                new_channel['vols'] = scans_for_fnames(self.inputs.channel_files)
+                if isdefined(self.inputs.channel_info):
+                    info = self.inputs.channel_info
+                    new_channel['biasreg'] = info[0]
+                    new_channel['biasfwhm'] = info[1]
+                    new_channel['write'] = [int(info[2][0]), int(info[2][1])]
+                return [new_channel]
         elif opt == 'tissues':
             new_tissues = []
             for tissue in val:
