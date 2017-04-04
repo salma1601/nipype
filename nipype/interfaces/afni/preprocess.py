@@ -1530,6 +1530,389 @@ class QualityIndex(CommandLine):
     output_spec = QualityIndexOutputSpec
 
 
+class QwarpInputSpec(CommandLineInputSpec):
+    in_file = File(
+        desc='source file for registration',
+        argstr='-source %s',
+        position=-1,
+        mandatory=True,
+        exists=True,
+        copyfile=False)
+    reference_file = File(
+        desc='reference file for registration',
+        argstr='-base %s',
+        position=-2,
+        mandatory=True,
+        exists=True)
+    out_file = File(
+        name_template='%s_warped',
+        desc='output image file name',
+        argstr='-prefix %s',
+        name_source='in_file')
+    allineate = traits.Bool(
+        desc='make 3dQwarp run 3dAllineate first, to align the source dataset '
+             'to the base with an affine transformation. It will then use '
+             'that alignment as a starting point for the nonlinear warping.',
+        argstr=' -allineate',
+        xor=['allinfast', 'plusminus', 'inilev', 'iniwarp'],
+        position=1)
+
+    options = traits.Str(desc='additional options for SVM-light', argstr='%s')
+
+    allifast = traits.Bool(
+        desc='make 3dQwarp run 3dAllineate with the option \'-onepass\', '
+             'to align the source dataset to the base with an affine '
+             'transformation when the datasets overlap reasonably already. '
+             'This makes the\'3dAllineate\' run faster (by avoiding the '
+             'time-consuming coarse pass step of trying lots of shifts and '
+             'rotations to find an idea of how to start).',
+        argstr=' -allifast',
+        xor=['allineate'],
+        position=1)
+    resample = traits.Bool(
+        desc='resamples the source dataset to match the base dataset grid. '
+             'You can use this if the two datasets overlap well but are not '
+             'on the same 3D grid.',
+        argstr=' -resample')
+    nowarp = traits.Bool(
+        desc='Do not save the _WARP file.',
+        argstr=' -nowarp')
+    iwarp = traits.Bool(
+        desc='Do compute and save the _WARPINV file.',
+        argstr=' -iwarp')
+    nodset = traits.Bool(
+        desc='Do not save the warped source dataset (i.e., if you only need '
+             'the _WARP).',
+        argstr=' -nodset')
+    pear = traits.Bool(
+        desc='Use strict Pearson correlation for matching.',
+        argstr=' -pear')
+    noneg = traits.Bool(
+        desc='Replace negative values in either input volume with 0.',
+        argstr=' -noneg')
+    nopenalty = traits.Bool(
+        desc='Do not use a penalty on the cost function; the goal '
+             'of the penalty is to reduce grid distortions.',
+        argstr=' -nopenalty')
+    penfac = traits.Float(
+        desc='Penalty weight. The default value is 1. Larger values mean the '
+             'penalty counts more, reducing grid distortions, insha\'Allah; '
+             '\'nopenalty\' is the same as setting this value to 0.',
+        argstr=' -penfac %f')
+    useweight = traits.Bool(
+        desc='Make each voxel in the base automask weighted by the intensity '
+             'of the (blurred) base image.  This makes white matter count '
+             'more in T1-weighted volumes, for example.',
+        argstr=' -useweight')
+    noweight = traits.Bool(
+        desc='If you want a binary weight (the old default), use this option. '
+             'That is, each voxel in the base volume automask will be '
+             'weighted the same in the computation of the cost functional.',
+        argstr=' -noweight')
+    weight = traits.Float(
+        desc='Instead of computing the weight from the base dataset,'
+             'directly input the weight volume from dataset.',
+        argstr=' -weight %f')
+    wball_xyzrf = traits.Tuple(
+        traits.Float(), traits.Float(), traits.Float(), traits.Float(),
+        traits.Float(),
+        desc='Enhance automatic weight from \'useweight\' by a factor '
+             'of 1+f*Gaussian(FWHM=r) centered in the base image at DICOM '
+             'coordinates (x,y,z) and with radius \'r\'. The goal of this '
+             'option is to try and make the alignment better in a specific '
+             'part of the brain.',
+        argstr=' -wball %f %f %f %f %f',
+        xor=['wmask'])
+    wmask = traits.Tuple(
+        File(exists=True), traits.Float(),
+        desc='Similar to \'-wball\', but here, you provide a dataset that '
+             'indicates where to increase the weight.',
+        argstr=' -wmask %s %f',
+        xor=['wball'])
+    wtprefix = Str(
+        desc='the prefix to save the auto-computed weight volume.',
+        argstr=' -wtprefix %s')
+    blur = traits.List(
+        traits.Float(), minlen=1, maxlen=2,
+        desc='Gaussian blurring (FWHM) for the input images in '
+             'voxels before doing the alignment, default to 2.345. '
+             'If 2 values are given then the first one is applied to the base '
+             'volume, the second to the source volume.',
+        argstr=' -blur %f')
+    pblur = traits.Either(
+        traits.Bool(), traits.List(traits.Float(), minlen=1, maxlen=2,
+                                   [.09, .09], usedefault=True),
+        desc='Progressive blurring. You can optionally give the fraction '
+             'of the patch size that is used for the progressive blur of the '
+             'base image (min 0, max 0.25). If you provide a second value, it '
+             'will be used for progressively blurring the the source image. '
+             'Default = [0.09, 0.09].',
+        argstr=' -pblur')
+    noweight = traits.Bool(
+        desc='If you want a binary weight (the old default), use this option. '
+             'That is, each voxel in the base volume automask will be '
+             'weighted the same in the computation of the cost functional.',
+        argstr=' -noweight')
+
+
+ -nopblur     = Don't use '-pblur'; equivalent to '-pblur 0 0'.
+
+ -emask ee    = Here, 'ee' is a dataset to specify a mask of voxels
+                to EXCLUDE from the analysis -- all voxels in 'ee'
+                that are NONZERO will not be used in the alignment.
+               * The base image always automasked -- the emask is
+                 extra, to indicate voxels you definitely DON'T want
+                 included in the matching process, even if they are
+                 inside the brain.
+           -->>* Note that 3dAllineate has the same option. Since you
+                 usually have to use 3dAllineate before 3dQwarp, you
+                 will probably want to use -emask in both programs.
+                [ Unless, of course, you are using '-allineate',  which  ]
+                [ will automatically include '-emask' in the 3dAllineate ]
+                [ phase if '-emask' is used here in 3dQwarp.             ]
+               * Applications: exclude a tumor or resected region
+                 (e.g., draw a mask in the AFNI Drawing plugin).
+           -->>* Note that the emask applies to the base dataset,
+                 so if you are registering a pre- and post-surgery
+                 volume, you would probably use the post-surgery
+                 dataset as the base.  If you eventually want the
+                 result back in the pre-surgery space, then you
+                 would use the inverse warp afterwards (in 3dNwarpApply).
+
+ -noXdis      = These options let you specify that the warp should not
+ -noYdis      = displace in the given direction.  For example, combining
+ -noZdis      = -noXdis and -noZdis would mean only warping along the
+                y-direction would be allowed.
+               * Here, 'x' refers to the first coordinate in the dataset,
+                 which is usually the Right-to-Left direction.  Et cetera.
+
+ -iniwarp ww  = 'ww' is a dataset with an initial nonlinear warp to use.
+               * If this option is not used, the initial warp is the identity.
+               * You can specify a catenation of warps (in quotes) here, as in
+                 program 3dNwarpApply.
+               * As a special case, if you just input an affine matrix in a .1D
+                 file, that will work also -- it is treated as giving the initial
+                 warp via the string "IDENT(base_dataset) matrix_file.aff12.1D".
+               * You CANNOT use this option with -duplo !!
+               * -iniwarp is usually used with -inilev to re-start 3dQwarp from
+                 a previous stopping point.
+
+ -inilev lv   = 'lv' is the initial refinement 'level' at which to start.
+               * Usually used with -iniwarp; CANNOT be used with -duplo.
+               * The combination of -inilev and -iniwarp lets you take the
+                 results of a previous 3dQwarp run and refine them further:
+                   3dQwarp -prefix Q25 -source SS+tlrc -base TEMPLATE+tlrc \
+                           -duplo -minpatch 25 -blur 0 3
+                   3dQwarp -prefix Q11 -source SS+tlrc -base TEMPLATE+tlrc \
+                           -inilev 7 -iniwarp Q25_WARP+tlrc -blur 0 2
+                 Note that the source dataset in the second run is the SAME as
+                 in the first run.  If you don't see why this is necessary,
+                 then you probably need to seek help from an AFNI guru.
+          -->>** Also see the script @toMNI_Qwarpar for the use of this option
+                 in creating a template dataset from a collection of scans from
+                 different subjects.
+
+ -minpatch mm = Set the minimum patch size for warp searching to 'mm' voxels.
+   *OR*        * The value of mm should be an odd integer.
+ -patchmin mm  * The default value of mm is 25.
+               * For more accurate results than mm=25, try 19 or 13.
+               * The smallest allowed patch size is 5.
+               * You may want stop at a larger patch size (say 7 or 9) and use
+                 the -Qfinal option to run that final level with quintic warps,
+                 which might run faster and provide the same degree of warp detail.
+               * Trying to make two different brain volumes match in fine detail
+                 is usually a waste of time, especially in humans.  There is too
+                 much variability in anatomy to match gyrus to gyrus accurately.
+                 For this reason, the default minimum patch size is 25 voxels.
+                 Using a smaller '-minpatch' might try to force the warp to
+                 match features that do not match, and the result can be useless
+                 image distortions -- another reason to LOOK AT THE RESULTS.
+                                                        -------------------
+
+ -maxlev lv   = Here, 'lv' is the maximum refinement 'level' to use.  This
+                is an alternate way to specify when the program should stop.
+               * To only do global polynomial warping, use '-maxlev 0'.
+               * If you use both '-minpatch' and '-maxlev', then you are
+                 walking on the knife edge of danger.
+               * Of course, I know that you LIVE for such thrills.
+
+ -gridlist gl = This option provides an alternate way to specify the patch
+                grid sizes used in the warp optimization process. 'gl' is
+                a 1D file with a list of patches to use -- in most cases,
+                you will want to use it in the following form:
+                  -gridlist '1D: 0 151 101 75 51'
+               * Here, a 0 patch size means the global domain. Patch sizes
+                 otherwise should be odd integers >= 5.
+               * If you use the '0' patch size again after the first position,
+                 you will actually get an iteration at the size of the
+                 default patch level 1, where the patch sizes are 75% of
+                 the volume dimension.  There is no way to force the program
+                 to literally repeat the sui generis step of lev=0.
+               * You cannot use -gridlist with -duplo or -plusminus!
+
+ -allsave     = This option lets you save the output warps from each level
+   *OR*         of the refinement process.  Mostly used for experimenting.
+ -saveall      * Cannot be used with -nopadWARP, -duplo, or -plusminus.
+               * Will only save all the outputs if the program terminates
+                 normally -- if it crashes, or freezes, then all these
+                 warps are lost.
+
+ -duplo       = Start off with 1/2 scale versions of the volumes,
+                for getting a speedy coarse first alignment.
+               * Then scales back up to register the full volumes.
+                 The goal is greater speed, and it seems to help this
+                 positively piggish program to be more expeditious.
+               * However, accuracy is somewhat lower with '-duplo',
+                 for reasons that currenly elude Zhark; for this reason,
+                 the Emperor does not usually use '-duplo'.
+
+ -workhard    = Iterate more times, which can help when the volumes are
+                hard to align at all, or when you hope to get a more precise
+                alignment.
+               * Slows the program down (possibly a lot), of course.
+               * When you combine '-workhard'  with '-duplo', only the
+                 full size volumes get the extra iterations.
+               * For finer control over which refinement levels work hard,
+                 you can use this option in the form (for example)
+                     -workhard:4:7
+                 which implies the extra iterations will be done at levels
+                 4, 5, 6, and 7, but not otherwise.
+               * You can also use '-superhard' to iterate even more, but
+                 this extra option will REALLY slow things down.
+           -->>* Under most circumstances, you should not need to use either
+                 -workhard or -superhard.
+           -->>* The fastest way to register to a template image is via the
+                 -duplo option, and without the -workhard or -superhard options.
+           -->>* If you use this option in the form '-Workhard' (first letter
+                 in upper case), then the second iteration at each level is
+                 done with quintic polynomial warps.
+
+ -Qfinal      = At the finest patch size (the final level), use Hermite
+                quintic polynomials for the warp instead of cubic polynomials.
+               * In a 3D 'patch', there are 2x2x2x3=24 cubic polynomial basis
+                 function parameters over which to optimize (2 polynomials
+                 dependent on each of the x,y,z directions, and 3 different
+                 directions of displacement).
+               * There are 3x3x3x3=81 quintic polynomial parameters per patch.
+               * With -Qfinal, the final level will have more detail in
+                 the allowed warps, at the cost of yet more CPU time.
+               * However, no patch below 7x7x7 in size will be done with quintic
+                 polynomials.
+               * This option is also not usually needed, and is experimental.
+
+ -Qonly       = Use Hermite quintic polynomials at all levels.
+               * Very slow (about 4 times longer).  Also experimental.
+               * Will produce a (discrete representation of a) C2 warp.
+
+ -plusminus   = Normally, the warp displacements dis(x) are defined to match
+                base(x) to source(x+dis(x)).  With this option, the match
+                is between base(x-dis(x)) and source(x+dis(x)) -- the two
+                images 'meet in the middle'.
+               * One goal is to mimic the warping done to MRI EPI data by
+                 field inhomogeneities, when registering between a 'blip up'
+                 and a 'blip down' down volume, which will have opposite
+                 distortions.
+               * Define Wp(x) = x+dis(x) and Wm(x) = x-dis(x).  Then since
+                 base(Wm(x)) matches source(Wp(x)), by substituting INV(Wm(x))
+                 wherever we see x, we have base(x) matches source(Wp(INV(Wm(x))));
+                 that is, the warp V(x) that one would get from the 'usual' way
+                 of running 3dQwarp is V(x) = Wp(INV(Wm(x))).
+               * Conversely, we can calculate Wp(x) in terms of V(x) as follows:
+                   If V(x) = x + dv(x), define Vh(x) = x + dv(x)/2;
+                   then Wp(x) = V(INV(Vh(x)))
+               * With the above formulas, it is possible to compute Wp(x) from
+                 V(x) and vice-versa, using program 3dNwarpCalc.  The requisite
+                 commands are left as an exercise for the aspiring AFNI Jedi Master.
+               * You can use the semi-secret '-pmBASE' option to get the V(x)
+                 warp and the source dataset warped to base space, in addition to
+                 the Wp(x) '_PLUS' and Wm(x) '_MINUS' warps.
+           -->>* Alas: -plusminus does not work with -duplo or -allineate :-(
+               * However, you can use -iniwarp with -plusminus :-)
+           -->>* The outputs have _PLUS (from the source dataset) and _MINUS
+                 (from the base dataset) in their filenames, in addition to
+                 the prefix.  The -iwarp option, if present, will be ignored.
+
+ -pmNAMES p m = This option lets you change the PLUS and MINUS prefix appendages
+                alluded to directly above to something else that might be more
+                easy for you to grok.  For example, if you are warping EPI volumes
+                with phase-encoding in the LR-direction with volumes that had
+                phase-encoding in the RL-direction, you might do something like
+        -base EPI_LR+orig -source EPI_RL+orig -plusminus -pmNAMES RL LR -prefix EPIuw
+                recalling the the PLUS name goes with the source (RL) and the
+                MINUS name goes with the base (RL).  Then you'd end up with datasets
+                  EPIuw_LR+orig and EPIuw_LR_WARP+orig from the base
+                  EPIuw_RL+orig and EPIuw_RL_WARP+orig from the source
+                The EPIuw_LR_WARP+orig file could then be used to unwarp (e.g.,
+                using 3dNwarpApply) other LR-encoded EPI datasets from the same
+                scanning session.
+
+ -nopad      = Do NOT use zero-padding on the 3D base and source images.
+               [Default == zero-pad, if needed]
+              * The underlying model for deformations goes to zero at the
+                edge of the volume being warped.  However, if there is
+                significant data near an edge of the volume, then it won't
+                get displaced much, and so the results might not be good.
+              * Zero padding is designed as a way to work around this potential
+                problem.  You should NOT need the '-nopad' option for any
+                reason that Zhark can think of, but it is here to be symmetrical
+                with 3dAllineate.
+              * Note that the output (warped from source) dataset will be on the
+                base dataset grid whether or not zero-padding is allowed.  However,
+                unless you use the following option, allowing zero-padding (i.e.,
+                the default operation) will make the output WARP dataset(s) be
+                on a larger grid (also see '-expad' below).
+
+ -nopadWARP   = If you do NOT use '-nopad' (that is, you DO allow zero-padding
+                during the warp computations), then the computed warp will often
+                be bigger than the base volume.  This situation is normally not
+                an issue, but if for some reason you require the warp volume to
+                match the base volume, then use '-nopadWARP' to have the output
+                WARP dataset(s) truncated.
+               * Note that 3dNwarpApply and 3dNwarpAdjust will deal with warps
+                 that are defined over grids that are larger than the datasets
+                 to which they are applied; this is why Zhark says above that
+                 a padded warp 'is normally not an issue'.
+
+ -expad EE    = This option instructs the program to pad the warp by an extra
+                'EE' voxels (and then 3dQwarp starts optimizing it).
+               * This option is seldom needed, but can be useful if you
+                 might later catenate the nonlinear warp -- via 3dNwarpCat --
+                 with an affine transformation that contains a large shift.
+                 Under that circumstance, the nonlinear warp might be shifted
+                 partially outside its original grid, so expanding that grid
+                 can avoid this problem.
+               * Note that this option perforce turns off '-nopadWARP'.
+
+ -ballopt     = Normally, the incremental warp parameters are optimized inside
+                a rectangular 'box' (24 dimensional for cubic patches, 81 for
+                quintic patches), whose limits define the amount of distortion
+                allowed at each step.  Using '-ballopt' switches these limits
+                to be applied to a 'ball' (interior of a hypersphere), which
+                can allow for larger incremental displacements.  Use this
+                option if you think things need to be able to move farther.
+
+ -boxopt      = Use the 'box' optimization limits instead of the 'ball'
+                [this is the default at present].
+               * Note that if '-workhard' is used, then ball and box optimization
+                 are alternated in the different iterations at each level, so
+                 these two options have no effect in that case.
+
+ -verb        = Print out very very verbose progress messages (to stderr) :-)
+ -quiet       = Cut out most of the fun fun fun progress messages :-(
+
+    def _format_arg(self, name, trait_spec, value):
+        if name == 'pblur':
+            if isinstance(value, bool):
+                if value:
+                    return trait_spec.argstr
+                else:
+                    return None
+            elif isinstance(value, list):
+                arg = trait_spec.argstr + ' '.join(['%f' %v for v in value[1:]])
+            return arg
+        return super(Qwarp, self)._format_arg(name, trait_spec, value)
+
+
 class ROIStatsInputSpec(CommandLineInputSpec):
     in_file = File(
         desc='input file to 3dROIstats',

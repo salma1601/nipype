@@ -1320,7 +1320,7 @@ class Unifize(AFNICommand):
       (In other words, we do not recommend the use of 3dUniformize.)
 
     For complete details, see the `3dUnifize Documentation.
-    <https://afni.nimh.nih.gov/pub../pub/dist/doc/program_help/3dUnifize.html>`_
+    <https://afni.nimh.nih.gov/pub/dist/doc/program_help/3dUnifize.html>`_
 
     Examples
     ========
