@@ -104,6 +104,15 @@ def dwi_flirt(name='DWICoregistration', excl_nodiff=False,
     enhdw = pe.MapNode(niu.Function(
         input_names=['in_file', 'in_mask'], output_names=['out_file'],
         function=enhance), name='DWEqualize', iterfield=['in_file'])
+    # added by salma
+    enhb0 = pe.Node(niu.Function(
+        input_names=['in_file', 'in_mask', 'clip_limit'],
+        output_names=['out_file'], function=no_enhance), name='no_B0Equalize')
+    enhb0.inputs.clip_limit = 0.015
+    enhdw = pe.MapNode(niu.Function(
+        input_names=['in_file', 'in_mask'], output_names=['out_file'],
+        function=no_enhance), name='no_DWEqualize', iterfield=['in_file'])
+    # added by salma
     flirt = pe.MapNode(fsl.FLIRT(**flirt_param), name='CoRegistration',
                        iterfield=['in_file', 'in_matrix_file'])
     thres = pe.MapNode(fsl.Threshold(thresh=0.0), iterfield=['in_file'],
@@ -777,6 +786,31 @@ def enhance(in_file, clip_limit=0.010, in_mask=None, out_file=None):
                                           clip_limit=clip_limit)
 
     nb.Nifti1Image(adapted.reshape(imshape), im.affine,
+                   im.header).to_filename(out_file)
+
+    return out_file
+
+
+def no_enhance(in_file, clip_limit=0.010, in_mask=None, out_file=None):
+    import nibabel as nb
+    import os.path as op
+
+    if out_file is None:
+        fname, fext = op.splitext(op.basename(in_file))
+        if fext == '.gz':
+            fname, _ = op.splitext(fname)
+        out_file = op.abspath('./%s_no_enh.nii.gz' % fname)
+
+    im = nb.load(in_file)
+    imdata = im.get_data()
+
+    if in_mask is not None:
+        msk = nb.load(in_mask).get_data()
+        msk[msk > 0] = 1
+        msk[msk < 1] = 0
+        imdata = imdata * msk
+
+    nb.Nifti1Image(imdata, im.affine,
                    im.header).to_filename(out_file)
 
     return out_file
