@@ -355,7 +355,9 @@ should be taken as reference
     """
     from nipype.workflows.data import get_flirt_schedule
 
-    params = dict(dof=6, bgvalue=0, save_log=True, no_search=True,
+    params = dict(dof=6, 
+#                  bgvalue=0,  # commented by salma, doesn't work for fsl<5 
+                  save_log=True, no_search=True,
                   # cost='mutualinfo', cost_func='mutualinfo', bins=64,
                   schedule=get_flirt_schedule('hmc'))
 
@@ -456,7 +458,9 @@ head-motion correction)
     """
 
     from nipype.workflows.data import get_flirt_schedule
-    params = dict(dof=12, no_search=True, interp='spline', bgvalue=0,
+    params = dict(dof=12, no_search=True, 
+#                  interp='trilinear',  # changed par salma from spline
+#                  bgvalue=0,  # commented by salma
                   schedule=get_flirt_schedule('ecc'))
     # cost='normmi', cost_func='normmi', bins=64,
 
