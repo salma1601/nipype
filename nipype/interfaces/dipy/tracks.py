@@ -284,7 +284,8 @@ class StreamlineTractography(DipyBaseInterface):
         nib.trackvis.write(self._gen_filename('tracked', ext='.trk'),
                            csd_streamlines_trk, hdr_trk, points_space='voxel')
         print('saved by salma')
-        # added by salma        return runtime
+        # added by salma        
+        return runtime
 
     def _list_outputs(self):
         outputs = self._outputs().get()
