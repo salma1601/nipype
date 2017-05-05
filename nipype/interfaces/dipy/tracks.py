@@ -259,11 +259,11 @@ class StreamlineTractography(DipyBaseInterface):
         else:
             tmask = gfa
             a_low = self.inputs.gfa_thresh
-
+        print('salma: eudx WITHOUT AFFINE')
         eu = EuDX(tmask,
                   peaks.peak_indices[..., 0],
                   seeds=seeds,
-                  affine=affine,
+#                  affine=affine,  # removed by salma
                   odf_vertices=sphere.vertices,
                   a_low=a_low)
 
@@ -272,6 +272,19 @@ class StreamlineTractography(DipyBaseInterface):
         trkfilev = nb.trackvis.TrackvisFile(
             [(s, None, None) for s in ss_mm], points_space='rasmm', affine=np.eye(4))
         trkfilev.to_file(self._gen_filename('tracked', ext='.trk'))
+        # added by salma
+        import nibabel as nib
+        hdr_trk = nib.trackvis.empty_header()
+        img_dwi = nib.load(self.inputs.in_file)
+        hdr_trk['voxel_size'] = img_dwi.get_header().get_zooms()[:3]
+        hdr_trk['voxel_order'] = 'LAS'
+        hdr_trk['dim'] = gfa.shape[:3]
+        csd_streamlines_trk = [(s, None, None) for s in ss_mm]
+        csd_streamlines_trk = [(s, None, None) for s in list(eu)]
+        nib.trackvis.write(self._gen_filename('tracked', ext='.trk'),
+                           csd_streamlines_trk, hdr_trk, points_space='voxel')
+        print('saved by salma')
+        # added by salma        
         return runtime
 
     def _list_outputs(self):
