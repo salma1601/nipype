@@ -835,13 +835,13 @@ def remove_bias(name='bias_correct'):
 
     """
     inputnode = pe.Node(niu.IdentityInterface(
-        fields=['in_file', 'in_bval', 'in_mask']), name='inputnode')
+        fields=['in_file', 'in_bval', 'in_mask', 'max_b']), name='inputnode')  # added by salma
 
     outputnode = pe.Node(niu.IdentityInterface(fields=['out_file']),
                          name='outputnode')
 
     avg_b0 = pe.Node(niu.Function(
-        input_names=['in_dwi', 'in_bval'], output_names=['out_file'],
+        input_names=['in_dwi', 'in_bval', 'max_b'], output_names=['out_file'],  # added by salma
         function=b0_average), name='b0_avg')
     n4 = pe.Node(ants.N4BiasFieldCorrection(
         dimension=3, save_bias=True, bspline_fitting_distance=600),
@@ -856,7 +856,8 @@ def remove_bias(name='bias_correct'):
     wf = pe.Workflow(name=name)
     wf.connect([
         (inputnode, avg_b0, [('in_file', 'in_dwi'),
-                             ('in_bval', 'in_bval')]),
+                             ('in_bval', 'in_bval'),
+                             ('max_b', 'max_b')]),  # added by salma
         (avg_b0, n4, [('out_file', 'input_image')]),
         (inputnode, n4, [('in_mask', 'mask_image')]),
         (inputnode, split, [('in_file', 'in_file')]),
