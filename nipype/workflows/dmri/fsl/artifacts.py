@@ -362,11 +362,11 @@ should be taken as reference
                   schedule=get_flirt_schedule('hmc'))
 
     inputnode = pe.Node(niu.IdentityInterface(
-        fields=['in_file', 'ref_num', 'in_bvec', 'in_bval', 'in_mask']),
+        fields=['in_file', 'ref_num', 'in_bvec', 'in_bval', 'in_mask', 'lowbval']),  # lowbval added by salma
         name='inputnode')
     split = pe.Node(niu.Function(
         output_names=['out_ref', 'out_mov', 'out_bval', 'volid'],
-        input_names=['in_file', 'in_bval', 'ref_num'], function=hmc_split),
+        input_names=['in_file', 'in_bval', 'ref_num', 'lowbval'], function=hmc_split),  # lowbval added by salma
         name='SplitDWI')
     flirt = dwi_flirt(flirt_param=params)
     insmat = pe.Node(niu.Function(input_names=['inlist', 'volid'],
