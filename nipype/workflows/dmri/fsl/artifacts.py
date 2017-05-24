@@ -382,7 +382,8 @@ should be taken as reference
     wf.connect([
         (inputnode, split, [('in_file', 'in_file'),
                             ('in_bval', 'in_bval'),
-                            ('ref_num', 'ref_num')]),
+                            ('ref_num', 'ref_num'),
+                            ('lowbval', 'lowbval')]),
         (inputnode, flirt, [('in_mask', 'inputnode.ref_mask')]),
         (split, flirt, [('out_ref', 'inputnode.reference'),
                         ('out_mov', 'inputnode.in_file'),
