@@ -844,7 +844,7 @@ def remove_bias(name='bias_correct'):
         input_names=['in_dwi', 'in_bval', 'max_b'], output_names=['out_file'],  # added by salma
         function=b0_average), name='b0_avg')
     n4 = pe.Node(ants.N4BiasFieldCorrection(
-        dimension=3, save_bias=True, bspline_fitting_distance=600),
+        dimension=3, save_bias=True, bspline_fitting_distance=60),  # changed by salma from 600 to 60
         name='Bias_b0')
     split = pe.Node(fsl.Split(dimension='t'), name='SplitDWIs')
     mult = pe.MapNode(fsl.MultiImageMaths(op_string='-div %s'),
