@@ -466,9 +466,9 @@ head-motion correction)
     # cost='normmi', cost_func='normmi', bins=64,
 
     inputnode = pe.Node(niu.IdentityInterface(
-        fields=['in_file', 'in_bval', 'in_mask', 'in_xfms']), name='inputnode')
+        fields=['in_file', 'in_bval', 'in_mask', 'in_xfms', 'max_b']), name='inputnode')  # added by salma
     avg_b0 = pe.Node(niu.Function(
-        input_names=['in_dwi', 'in_bval'], output_names=['out_file'],
+        input_names=['in_dwi', 'in_bval', 'max_b'], output_names=['out_file'],  # added by salma
         function=b0_average), name='b0_avg')
     pick_dws = pe.Node(niu.Function(
         input_names=['in_dwi', 'in_bval', 'b'], output_names=['out_file'],
@@ -496,7 +496,8 @@ head-motion correction)
     wf = pe.Workflow(name=name)
     wf.connect([
         (inputnode, avg_b0, [('in_file', 'in_dwi'),
-                             ('in_bval', 'in_bval')]),
+                             ('in_bval', 'in_bval'),
+                             ('max_b', 'max_b')]),  # added by salma
         (inputnode, pick_dws, [('in_file', 'in_dwi'),
                                ('in_bval', 'in_bval')]),
         (inputnode, merge, [('in_file', 'in_dwi'),
