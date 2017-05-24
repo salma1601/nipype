@@ -61,8 +61,9 @@ class DipyDiffusionInterface(DipyBaseInterface):
     def _get_gradient_table(self):
         bval = np.loadtxt(self.inputs.in_bval)
         bvec = np.loadtxt(self.inputs.in_bvec).T
+        b0_threshold = self.inputs.b0_thres  # added by salma
         from dipy.core.gradients import gradient_table
-        gtab = gradient_table(bval, bvec)
+        gtab = gradient_table(bval, bvec, b0_threshold=b0_threshold)  # b0 threshold added by salma
 
         gtab.b0_threshold = self.inputs.b0_thres
         return gtab

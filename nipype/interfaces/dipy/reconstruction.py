@@ -24,6 +24,8 @@ class RESTOREInputSpec(DipyBaseInterfaceInputSpec):
     in_mask = File(exists=True, desc=('input mask in which compute tensors'))
     noise_mask = File(
         exists=True, desc=('input mask in which compute noise variance'))
+    b0_thres = traits.Float(
+        desc=('threshold for gradients for diffusion weighting.'))
 
 
 class RESTOREOutputSpec(TraitedSpec):
