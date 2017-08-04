@@ -1530,6 +1530,57 @@ class QualityIndex(CommandLine):
     output_spec = QualityIndexOutputSpec
 
 
+class Qwarp(AFNICommandBase):
+    """Computes a `quality index' for each sub-brick in a 3D+time dataset.
+    The output is a 1D time series with the index for each sub-brick.
+    The results are written to stdout.
+
+    For complete details, see the `3dTqual Documentation
+    <https://afni.nimh.nih.gov/pub/dist/doc/program_help/3dTqual.html>`_
+
+    Examples
+    ========
+
+    >>> from nipype.interfaces import afni
+    >>> tqual = afni.Qwarp()
+    >>> tqual.inputs.in_file = 'functional.nii'
+    >>> tqual.cmdline  # doctest: +ELLIPSIS +ALLOW_UNICODE
+    '3dTqual functional.nii > functional_tqual'
+    >>> res = tqual.run()  # doctest: +SKIP
+
+    """
+    def _format_arg(self, name, trait_spec, value):
+        if name == 'pblur':
+            if isinstance(value, bool):
+                if value:
+                    return trait_spec.argstr
+                else:
+                    return None
+            elif isinstance(value, list):
+                arg = trait_spec.argstr + ' '.join(['%f' %v for v in value[1:]])
+            return arg
+        if name == 'gridlist':
+            if isinstance(value, File):
+                arg = trait_spec.argstr + '%s'
+            elif isinstance(value, list):
+                arg = trait_spec.argstr + '1D:' + ' '.join(['%d' %v for v in value[1:]])
+            return arg
+        if name == 'workhard':
+            if isinstance(value, bool):
+                if value:
+                    return trait_spec.argstr
+                else:
+                    return None
+            elif isinstance(value, tuple):
+                arg = trait_spec.argstr + ':'.join(['%d' %v for v in value[1:]])
+            return arg
+        return super(Qwarp, self)._format_arg(name, trait_spec, value)
+
+    _cmd = '3dQwarp'
+    input_spec = QwarpInputSpec
+    output_spec = QwarpOutputSpec
+
+
 class ROIStatsInputSpec(CommandLineInputSpec):
     in_file = File(
         desc='input file to 3dROIstats',
