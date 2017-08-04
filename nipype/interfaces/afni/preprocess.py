@@ -1530,6 +1530,249 @@ class QualityIndex(CommandLine):
     output_spec = QualityIndexOutputSpec
 
 
+class QwarpInputSpec(CommandLineInputSpec):
+    in_file = File(
+        desc='source file for registration',
+        argstr='-source %s',
+        position=-1,
+        mandatory=True,
+        exists=True,
+        copyfile=False)
+    reference_file = File(
+        desc='reference file for registration',
+        argstr='-base %s',
+        position=-2,
+        mandatory=True,
+        exists=True)
+    out_file = File(
+        name_template='%s_warped',
+        desc='output image file name',
+        argstr='-prefix %s',
+        name_source='in_file')
+    allineate = traits.Bool(
+        desc='make 3dQwarp run 3dAllineate first, to align the source dataset '
+             'to the base with an affine transformation. It will then use '
+             'that alignment as a starting point for the nonlinear warping.',
+        argstr=' -allineate',
+        xor=['allinfast', 'plusminus', 'inilev', 'iniwarp'],
+        position=1)
+
+#    options = traits.Str(desc='additional options for SVM-light', argstr='%s')
+
+    allineate_fast = traits.Bool(
+        desc='make 3dQwarp run 3dAllineate with the option \'-onepass\', '
+             'to align the source dataset to the base with an affine '
+             'transformation when the datasets overlap reasonably already. '
+             'This makes the\'3dAllineate\' run faster (by avoiding the '
+             'time-consuming coarse pass step of trying lots of shifts and '
+             'rotations to find an idea of how to start).',
+        argstr=' -allifast',
+        xor=['allineate'],
+        position=1)
+    resample = traits.Bool(
+        desc='resamples the source dataset to match the base dataset grid. '
+             'You can use this if the two datasets overlap well but are not '
+             'on the same 3D grid.',
+        argstr=' -resample')
+    nowarp = traits.Bool(
+        desc='Do not save the _WARP file.',
+        argstr=' -nowarp')
+    iwarp = traits.Bool(
+        desc='Do compute and save the _WARPINV file.',
+        argstr=' -iwarp')
+    nodset = traits.Bool(
+        desc='Do not save the warped source dataset (i.e., if you only need '
+             'the _WARP).',
+        argstr=' -nodset')
+    pearson = traits.Bool(
+        desc='Use strict Pearson correlation for matching.',
+        argstr=' -pear')
+    noneg = traits.Bool(
+        desc='Replace negative values in either input volume with 0.',
+        argstr=' -noneg')
+    nopenalty = traits.Bool(
+        desc='Do not use a penalty on the cost function; the goal '
+             'of the penalty is to reduce grid distortions.',
+        argstr=' -nopenalty')
+    penalty_weight = traits.Float(
+        desc='Penalty weight. The default value is 1. Larger values mean the '
+             'penalty counts more, reducing grid distortions, insha\'Allah; '
+             '\'nopenalty\' is the same as setting this value to 0.',
+        argstr=' -penfac %f')
+    useweight = traits.Bool(
+        desc='Make each voxel in the base automask weighted by the intensity '
+             'of the (blurred) base image.  This makes white matter count '
+             'more in T1-weighted volumes, for example.',
+        argstr=' -useweight')
+    noweight = traits.Bool(
+        desc='If you want a binary weight (the old default), use this option. '
+             'That is, each voxel in the base volume automask will be '
+             'weighted the same in the computation of the cost functional.',
+        argstr=' -noweight')
+    weight = traits.Float(
+        desc='Instead of computing the weight from the base dataset,'
+             'directly input the weight volume from dataset.',
+        argstr=' -weight %f')
+    wball_xyzrf = traits.Tuple(
+        traits.Float(), traits.Float(), traits.Float(), traits.Float(),
+        traits.Float(),
+        desc='Enhance automatic weight from \'useweight\' by a factor '
+             'of 1+f*Gaussian(FWHM=r) centered in the base image at DICOM '
+             'coordinates (x,y,z) and with radius \'r\'. The goal of this '
+             'option is to try and make the alignment better in a specific '
+             'part of the brain.',
+        argstr=' -wball %f %f %f %f %f',
+        xor=['wmask'])
+    wmask = traits.Tuple(
+        File(exists=True), traits.Float(),
+        desc='Similar to \'-wball\', but here, you provide a dataset that '
+             'indicates where to increase the weight.',
+        argstr=' -wmask %s %f',
+        xor=['wball'])
+    weight_prefix = Str(
+        desc='the prefix to save the auto-computed weight volume.',
+        argstr=' -wtprefix %s')
+    blur = traits.List(
+        traits.Float(), minlen=1, maxlen=2,
+        desc='Gaussian blurring (FWHM) for the input images in '
+             'voxels before doing the alignment, default to 2.345. '
+             'If 2 values are given then the first one is applied to the base '
+             'volume, the second to the source volume.',
+        argstr=' -blur %f')
+    pblur = traits.Either(
+        traits.Bool(), traits.List(traits.Float(), minlen=1, maxlen=2,
+                                   [.09, .09], usedefault=True),
+        desc='Progressive blurring. You can optionally give the fraction '
+             'of the patch size that is used for the progressive blur of the '
+             'base image (min 0, max 0.25). If you provide a second value, it '
+             'will be used for progressively blurring the the source image. '
+             'Default = [0.09, 0.09].',
+        argstr=' -pblur')
+    noweight = traits.Bool(
+        desc='If you want a binary weight (the old default), use this option. '
+             'That is, each voxel in the base volume automask will be '
+             'weighted the same in the computation of the cost functional.',
+        argstr=' -noweight')
+    nopblur = traits.Bool(
+        desc='Don\'t use \'-pblur\'.',
+        argstr=' -nopblur')
+    mask_file = File(
+        desc='path to mask file, to mask the reference file',
+        argstr=' -emask %s')
+    noXdis = traits.Bool(
+        desc='Do not allow warping along the x-direction.',
+        argstr=' -noXdis')
+    noYdis = traits.Bool(
+        desc='Do not allow warping along the y-direction.',
+        argstr=' -noYdis')
+    noZdis = traits.Bool(
+        desc='Do not allow warping along the z-direction.',
+        argstr=' -noZdis')
+    initial_warp_file = File(
+        desc='Path to initial nonlinear warp file to use. If unspecified, '
+             'initial warp is the identity.',
+        argstr=' -iniwarp %s',
+        xor=['duplo'])
+    initial_level = traits.Int(
+        desc='Initial refinement level at which to start. Usually used with '
+             '\'iniwarp\' to take the results of a previous 3dQwarp and '
+             'refine them further.',
+        argstr=' -inilev %d',
+        xor=['duplo'])
+    minpatch = traits.Enum(
+        tuple(range(5, 26, 2)),
+        desc='Minimum patch size for warp searching, default to 25 voxels.',
+        argstr=' -minpatch %d')
+    max_level = traits.Int(
+        desc='maximum refinement level to use.',
+        argstr=' -maxlev %d')
+    gridlist = traits.Either(
+        File(exists=True), traits.List(traits.Int(), usedefault=True),
+        desc='Alternate way to specify the patch grid sizes used in the warp '
+             'optimization process, example \'1D: 0 151 101 75 51\' '
+             'or 1D file with a list of patches to use'
+             'A 0 patch size means the global domain. Patch sizes otherwise '
+             'should be odd integers >= 5',
+        argstr=' -gridlist %s',
+        xor=['duplo', 'plusminus'])
+    allsave = traits.Bool(
+        desc='save the output warps from each level of the refinement process',
+        argstr=' -allsave',
+        xor=['duplo', 'plusminus', 'nopadWARP'])
+    duplo = traits.Bool(
+        desc='Start off with 1/2 scale versions of the volumes, '
+             'for getting a speedy coarse first alignment, Then scales back '
+             'up to register the full volumes',
+        argstr=' -duplo')
+    workhard = traits.Either(
+        traits.Bool(), traits.Tuple(traits.Int(), traits.Int()),
+        desc='Iterate more times, which can help when the volumes are '
+             'hard to align at all, or when you hope to get a more precise '
+             'alignment. For finer control over which refinement levels work '
+             'hard, you can specify a range of levels at which the extra '
+             'iterations will be done',
+        argstr=' -workhard')
+    workhard = traits.Either(
+        traits.Bool(), traits.List(traits.Int(), minlen=2, maxlen=2),
+        desc='Iterate more times, which can help when the volumes are '
+             'hard to align at all, or when you hope to get a more precise '
+             'alignment. For finer control over which refinement levels work '
+             'hard, you can specify a range of levels at which the extra '
+             'iterations will be done',
+        argstr=' -workhard')
+    final_quintic = traits.Bool(
+        desc='At the finest patch size (the final level), use Hermite '
+             'quintic polynomials for the warp instead of cubic polynomials',
+        argstr=' -Qfinal')
+    only_quintic = traits.Bool(
+        desc='Use Hermite quintic polynomials at all levels',
+        argstr=' -Qfinal')
+    plusminus = traits.Bool(
+        desc='Define the warp displacements dis(x) to match base(x-dis(x)) to '
+             'source(x+dis(x)) instead of matcching base(x) to '
+             'source(x+dis(x)), so that the two images \'meet in the middle\'',
+        argstr=' -plusminus',
+        xor=['duplo', 'allineate'])
+    plusminus_prefixes = traits.Tuple(
+        traits.Str(), traits.Str(),
+        desc='change the PLUS and MINUS prefix appendages to something else',
+        argstr=' -pmNAMES %s %s',
+        xor=['duplo', 'allineate'])
+    nopad = traits.Bool(
+        desc='The underlying model for deformations goes to zero at the '
+             'edge of the volume being warped.  However, if there is'
+             'significant data near an edge of the volume, then it won\'t'
+             'get displaced much, and so the results might not be good.'
+             'Zero padding is designed as a way to work around this potential'
+             'problem. Do NOT use zero-padding on the 3D base and source '
+             'images',
+        argstr=' -nopad')
+    nopad_warp = traits.Bool(
+        desc='If you do NOT use \'-nopad\' (that is, you DO allow zero-padding'
+             ' during the warp computations), then the computed warp will '
+             'often be bigger than the base volume.  This situation is '
+             'normally not an issue, but if for some reason you require the '
+             'warp volume to match the base volume, then set nopad_warp to '
+             'True to have the output WARP dataset(s) truncated.',
+        argstr=' -nopadWARP')
+    nvoxels_expad = traits.Int(
+        desc='pad the warp by an extra given number of voxels',
+        argstr=' -expad %d')
+    ballopt = traits.Bool(
+        desc='Apply the amount of distortion to a \'ball\' , which '
+             'can allow for larger incremental displacements.',
+        argstr=' -ballopt')
+    boxopt = traits.Bool(
+        desc='Apply the amount of distortion to a \'box\'.',
+        argstr=' -boxopt')
+    verbose = traits.Bool(
+        desc='Print out very verbose progress messages.',
+        argstr=' -verb')
+    quiet = traits.Bool(
+        desc='Cut out most of the progress messages.',
+        argstr=' -quiet')
+
+
 class Qwarp(AFNICommandBase):
     """Computes a `quality index' for each sub-brick in a 3D+time dataset.
     The output is a 1D time series with the index for each sub-brick.
