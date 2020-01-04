@@ -270,10 +270,14 @@ class AllineateInputSpec(AFNICommandInputSpec):
         xor=["allcostx"],
     )
     out_param_file = File(
-        argstr="-1Dparam_save %s",
-        desc="Save the warp parameters in ASCII (.1D) format.",
-        xor=["in_param_file", "allcostx"],
-    )
+        argstr='-1Dparam_save %s',
+        desc='Save the warp parameters in ASCII (.1D) format.',
+        name_template='%s_allineate_params.1D',
+        keep_extension=True,
+        name_source='in_file',
+        hash_files=False,
+        mandatory=False,
+        xor=['in_param_file', 'allcostx'])
     in_param_file = File(
         exists=True,
         argstr="-1Dparam_apply %s",
@@ -282,10 +286,14 @@ class AllineateInputSpec(AFNICommandInputSpec):
         xor=["out_param_file"],
     )
     out_matrix = File(
-        argstr="-1Dmatrix_save %s",
-        desc="Save the transformation matrix for each volume.",
-        xor=["in_matrix", "allcostx"],
-    )
+        argstr='-1Dmatrix_save %s',
+        desc='Save the transformation matrix for each volume.',
+        name_template='%s_allineate_matrix.aff12.1D',
+        keep_extension=True,
+        name_source='in_file',
+        hash_files=False,
+        mandatory=False,
+        xor=['in_matrix', 'allcostx'])
     in_matrix = File(
         desc="matrix to align input file",
         argstr="-1Dmatrix_apply %s",
